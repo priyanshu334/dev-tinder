@@ -1,17 +1,29 @@
 const express = require('express')
 const connectDB = require("./config/database")
 const app = express()
-const validateSignUpData = require("./utils/validation")
+const {validateSignUpData} = require("./utils/validation")
 const User = require("./models/user")
+const bcrypt = require("bcrypt")
 app.use(express.json())//converts everting to jsnon it's amiddleware 
+
+
+
 app.post("/signup", async (req ,res)=>{
 //validatop of ddata
 
 
 //encrypt the password
-const user = new User(req.body)
-validateSignUpData(req);
+
+
  try{
+    validateSignUpData(req);
+    const {firstName,lastName,emailId,password} = req.body;
+
+    const passwordHash = bcrypt.hash(password,10)
+    const user = new User({
+        firstName,lastName,emailId,password:passwordHash
+    })
+    
     await user.save();
     res.send("user added sucessfully")
 
@@ -39,6 +51,25 @@ app.get('/user',async (req,res)=>{
     }
 
 
+
+})
+app.post("/login", async(req,res)=>{
+    try{
+     
+        const {emailId,password}=req.body;
+        const user = await User.findOne({emialId:emailId});
+        if(!user){
+            throw new Error("Email id is not present in Db")
+        }
+        const isPasswordValid = bcrypt.compare(password ,user.password)
+        if(isPasswordValid){
+            res.send("Login sucessfull")
+        }else{
+            throw new Error("incoorect password")
+        }
+    }catch(err){
+        res.status(400).send(err.message);
+    }
 
 })
 app.get("/feed",async (req,res)=>{

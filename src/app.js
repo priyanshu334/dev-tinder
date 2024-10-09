@@ -1,17 +1,16 @@
 const express = require('express')
 const connectDB = require("./config/database")
 const app = express()
+const validateSignUpData = require("./utils/validation")
 const User = require("./models/user")
 app.use(express.json())//converts everting to jsnon it's amiddleware 
 app.post("/signup", async (req ,res)=>{
-//  const user  = new User({
-//     firstName:"Akshay",
-//     lastName:"saini",
-//     emialId:"akshay@gmail.com",
-//     password:"76sebhbhs"
-//  })//)creating the new instance of user model 
+//validatop of ddata
 
+
+//encrypt the password
 const user = new User(req.body)
+validateSignUpData(req);
  try{
     await user.save();
     res.send("user added sucessfully")
@@ -42,7 +41,49 @@ app.get('/user',async (req,res)=>{
 
 
 })
+app.get("/feed",async (req,res)=>{
+    try{
+        const users = await User.find({});
+        res.send(users)
+    }catch(err){
+        res.status(404).send("opps")
+    }
+})
+app.patch("/user/:userId",async(req,res)=>{
+    const userId = req.params.userId;
+    const data = req.body;
+    
+    try{
+     
+    const ALLOWED_UPDDATEs=[
+        "photoUrl","about","gender","age"
+    ]
+    const isUpdateAllowed = Object.keys((data).every((k)=>ALLOWED_UPDDATEs.includes(k)))
+    if(!isUpdateAllowed){
+        throw new Error("update not allowed")
+    }
+    if(data?.skills.length>10){
+        throw new Error("skills cannot be more than 10")
+    }
+        await User.findByIdAndUpdate({_id:userId},data,{
+            returnDocument:"after",
+            runValidators:true,
+        });
+        res.send("user updated sucesfully")
+    }catch(err){
+        res.status(400).send("something went wrong")
+    }
+})
+app.delete("/user",async(req,res)=>{
+    const userId = req.body.userId;
+    try{
+        const user = await User.findByIdAndDelete(userId);
+       res.send("user deleted sucessully        ")
 
+    }catch(err){
+        res.status(400).send("something went wrong");
+    }
+})
 connectDB.then(()=>{
     console.log("connection established")
     app.listen(7777 , ()=>{
